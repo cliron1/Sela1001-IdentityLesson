@@ -1,0 +1,63 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>@ViewData["Title"] - המערכת שלי</title>
+	@*<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />*@
+	<link rel="stylesheet" href="https://cdn.rtlcss.com/bootstrap/v4.5.3/css/bootstrap.min.css" integrity="sha384-JvExCACAZcHNJEc7156QaHXTnQL3hQBixvj5RV5buE7vgnNEzzskDtx9NQ4p6BJe" crossorigin="anonymous">
+	<link rel="stylesheet" href="~/css/site.css" />
+	@RenderSection("Styles", required: false)
+	@RenderSection("HeadScript", required: false)
+</head>
+<body>
+	@RenderSection("TopBody", required: false)
+	<header>
+		<nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+			<div class="container">
+				<a class="navbar-brand" asp-controller="Home" asp-action="Index">המערכת שלי</a>
+				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+						aria-expanded="false" aria-label="Toggle navigation">
+					<span class="navbar-toggler-icon"></span>
+				</button>
+				<div class="navbar-collapse collapse d-sm-inline-flex flex-sm-row-reverse">
+					<ul class="navbar-nav flex-grow-1">
+						<li class="nav-item">
+							<a class="nav-link text-dark" asp-controller="Home" asp-action="Index">עמוד הבית</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link text-dark" asp-controller="Home" asp-action="Privacy">פרטיות</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link text-dark" asp-controller="Account" asp-action="Login">@User.Identity.Name</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link text-dark" asp-controller="Account" asp-action="Login">כניסה</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link text-dark" asp-controller="Account" asp-action="Signup">הרשמה</a>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</nav>
+	</header>
+	<div class="container">
+		<main role="main" class="pb-3">
+			@RenderBody()
+		</main>
+	</div>
+
+	<footer class="border-top footer text-muted">
+		<div class="container">
+			&copy; 2021 - המערכת שלי - <a asp-controller="Home" asp-action="Privacy">פרטיות</a>
+		</div>
+	</footer>
+	<script src="~/lib/jquery/dist/jquery.min.js"></script>
+	@*<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>*@
+	<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+	<script src="https://cdn.rtlcss.com/bootstrap/v4.5.3/js/bootstrap.bundle.min.js" integrity="sha384-40ix5a3dj6/qaC7tfz0Yr+p9fqWLzzAXiwxVLt9dw7UjQzGYw6rWRhFAnRapuQyK" crossorigin="anonymous"></script>
+	<script src="~/js/site.js" asp-append-version="true"></script>
+	@RenderSection("Scripts", required: false)
+</body>
+</html>
