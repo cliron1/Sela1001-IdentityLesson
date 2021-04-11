@@ -2,10 +2,10 @@
 
 namespace IdentityLesson.Models {
 	public class LoginModel {
-		[Display(Name = "שם משתמש:")]
+		[Display(Name = "אימייל:")]
 		[Required(ErrorMessage = "שדה חובה")]
-		[MaxLength(50, ErrorMessage = "ארוך מידי")]
-		public string Username { get; set; }
+		[EmailAddress(ErrorMessage = "אימייל לא חוקי")]
+		public string Email { get; set; }
 
 		[Display(Name = "סיסמה:")]
 		[Required(ErrorMessage = "שדה חובה")]

@@ -1,4 +1,5 @@
 using IdentityLesson.Data;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -20,13 +21,15 @@ namespace IdentityLesson {
 				opts.UseSqlServer(Configuration.GetConnectionString("Default"));
 			});
 
-			services.AddIdentity<AppUser, IdentityRole>()
-				.AddEntityFrameworkStores<AppDbContext>()
-				.AddDefaultTokenProviders();
-
-			services.AddAuthentication("cookies")
-				.AddCookie("cookies", opts => {
+			services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+				.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, opts => {
 					opts.LoginPath = "/Account/Login";
+				})
+				.AddCookie("ExternalCookie")
+				.AddGoogle(options => {
+					options.SignInScheme = "ExternalCookie";
+					options.ClientId = Configuration["Google:ClientId"];
+					options.ClientSecret = Configuration["Google:ClientSecret"];
 				});
 
 			services.AddControllersWithViews();

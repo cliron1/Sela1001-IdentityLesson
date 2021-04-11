@@ -1,38 +1,47 @@
 ﻿using IdentityLesson.Data;
+using IdentityLesson.Extensions;
 using IdentityLesson.Models;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace IdentityLesson.Controllers {
 	public class AccountController : Controller {
-		private readonly UserManager<AppUser> userManager;
+		private readonly AppDbContext context;
 
-		public AccountController(UserManager<AppUser> userManager) {
-			this.userManager = userManager;
+		public AccountController(AppDbContext context) {
+			this.context = context;
 		}
-
 
 		public IActionResult Login() {
 			var debugData = new LoginModel {
-				Username = "Liron",
-				Pwd = "Qwerty1@"
+				Email = "liron@flame-ware.com"
 			};
 			return View(debugData);
 		}
 
 		[HttpPost]
-		public async Task<IActionResult> LoginAsync(LoginModel model) {
+		public async Task<IActionResult> Login(LoginModel model) {
 			if(ModelState.IsValid) {
-				var user = await userManager.FindByNameAsync(model.Username);
-				if(user != null && await userManager.CheckPasswordAsync(user, model.Pwd)) {
-					var identity = new ClaimsIdentity();
-					identity.AddClaim(new Claim(ClaimTypes.Name, user.UserName));
+				var user = context.Users.Where(x => x.Email == model.Email && x.HashedPwd == model.Pwd.Hash()).FirstOrDefault();
+
+				if(user != null) {
+					var claims = new List<Claim> {
+						new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+						new Claim(ClaimTypes.Name, user.Name),
+						new Claim(ClaimTypes.Email, user.Email)
+					};
+					var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 					var principal = new ClaimsPrincipal(identity);
-					await HttpContext.SignInAsync(principal);
+
+					await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
 					return RedirectToAction("Index", "Home");
 				}
@@ -42,36 +51,91 @@ namespace IdentityLesson.Controllers {
 			return View();
 		}
 
+		public IActionResult GoogleLogin() {
+			var props = new AuthenticationProperties {
+				RedirectUri = Url.Action("LoginWithGoogleCallback")
+			};
+			return Challenge(props, GoogleDefaults.AuthenticationScheme);
+		}
+
+		public async Task<IActionResult> LoginWithGoogleCallbackAsync() {
+			var result = await HttpContext.AuthenticateAsync("ExternalCookie");
+			var exClaims = result.Principal.Claims;
+
+			var googleId = exClaims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier).Value;
+			var googleName = exClaims.FirstOrDefault(x => x.Type == ClaimTypes.GivenName).Value;
+			var googleEmail = exClaims.FirstOrDefault(x => x.Type == ClaimTypes.Email).Value;
+
+			var user = context.Users.Where(x => x.GoogleId == googleId).FirstOrDefault();
+
+			if(user == null) {
+				user = context.Users.Where(x => x.Email == googleEmail).FirstOrDefault();
+				
+				// Note: Profile exist by email but GoogleId is missing...
+				if(user != null) {
+					user.GoogleId = googleId;
+					context.Users.Update(user);
+					await context.SaveChangesAsync();
+
+				} else {
+					// Note: Create a new User
+					user = new User {
+						Name = googleName,
+						Email = googleEmail,
+						GoogleId = googleId
+					};
+
+					context.Users.Add(user);
+					await context.SaveChangesAsync();
+				}
+			}
+
+			var claims = new List<Claim> {
+						new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+						new Claim(ClaimTypes.Name, user.Name),
+						new Claim(ClaimTypes.Email, user.Email)
+					};
+			var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+			var principal = new ClaimsPrincipal(identity);
+
+			await HttpContext.SignOutAsync("ExternalCookie");
+			await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+			return RedirectToAction("Index", "Home");
+		}
+
 		public IActionResult Signup() {
-			//var debugData = new SignupModel {
-			//	Username = "Liron",
-			//	Email = "lironco@sela.co.il",
-			//	Pwd = "Qwerty1@",
-			//	ConfirmPwd = "Qwerty1@"
-			//};
-			return View();
+			var debugData = new SignupModel {
+				Name = "לירון כהן",
+				Email = "liron@flame-ware.com"
+			};
+			return View(debugData);
 		}
 
 		[HttpPost]
-		public async Task<IActionResult> SignupAsync(SignupModel model) {
+		public async Task<IActionResult> Signup(SignupModel model) {
 			if(ModelState.IsValid) {
-				var user = await userManager.FindByNameAsync(model.Username);
+				var user = context.Users.Where(x => x.Email == model.Email).FirstOrDefault();
 
 				if(user == null) {
-					user = new AppUser {
-						UserName = model.Username,
-						Email = model.Email
+					user = new User {
+						Name = model.Name,
+						Email = model.Email,
+						HashedPwd = model.Pwd.Hash()
 					};
 
-					var result = await userManager.CreateAsync(user, model.Pwd);
-					if(result.Succeeded)
-						return RedirectToAction("SignupSuccess");
+					var result = context.Users.Add(user);
+					try {
+						var affected = await context.SaveChangesAsync();
+						if(affected > 0)
+							return RedirectToAction("SignupSuccess");
 
-					if(result.Errors != null && result.Errors.Any())
-						foreach(var error in result.Errors)
-							ModelState.AddModelError("", error.Description);
-					else
-						ModelState.AddModelError("", "לא הצלחנו לרשום אותך למערכת...");
+					} catch(Exception ex) {
+						ModelState.AddModelError("", ex.Message);
+						//ModelState.AddModelError("", "לא הצלחנו לרשום אותך למערכת...");
+					}
+				} else {
+					ModelState.AddModelError("", "קיים כבר משתמש עם אימייל זה");
 				}
 			}
 			return View();
@@ -79,6 +143,11 @@ namespace IdentityLesson.Controllers {
 
 		public IActionResult SignupSuccess() {
 			return View();
+		}
+
+		public async Task<IActionResult> Logout() {
+			await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+			return RedirectToAction("Index", "Home");
 		}
 	}
 }
